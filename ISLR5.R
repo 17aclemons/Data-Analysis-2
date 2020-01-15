@@ -5,7 +5,7 @@
 
 ####2####
 #Question 2) What are the tradeoffs of using k-fold cross validation approach vs the validation set?
-
+#
 ####3####
 #Question 3) What are the tradeoffs of using k-fold cross validation approach vs leave one out cross validation?
 
