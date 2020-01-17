@@ -40,9 +40,13 @@ model.fn <- function(data, index){
 model.fn(Default, 1:1000)
 model.fn(Default, sample(1:1000, replace = T))
 
-boot(Default, model.fn, R = 1000)
+bootstrap <- boot(Default, model.fn, R = 1000)
 #the median standard error is ~6.5
 
 #B) Compute the 95% confidence interval of the standard error of your prediction
+ci <- 6.5*1.96
+lower <- 6.5 + ci
+upper <- 6.5 - ci
 
-
+lower
+upper
