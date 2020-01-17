@@ -32,11 +32,17 @@ model <- lm(balance ~ income, Default)
 
 #A) Compute the standard error of the median balance.
 library(boot)
+set.seed(1)
 model.fn <- function(data, index){
-  return(median())
+  return(median(coef(lm(balance ~income, data = data, subset = index))))
 }
 
+model.fn(Default, 1:1000)
+model.fn(Default, sample(1:1000, replace = T))
+
 boot(Default, model.fn, R = 1000)
+#the median standard error is ~6.5
+
 #B) Compute the 95% confidence interval of the standard error of your prediction
 
 
