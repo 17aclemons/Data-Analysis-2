@@ -28,25 +28,25 @@
 ####5####
 #Question 5) Create a model to estimate balance based on the variables from the ISLR::Default data set. Use the variables of your choosing.
 library(ISLR)
-model <- lm(balance ~ income, Default)
-
-#A) Compute the standard error of the median balance.
 library(boot)
 set.seed(1)
-model.fn <- function(data, index){
-  return(median(coef(lm(balance ~income, data = data, subset = index))))
+median.fn <- function(data, index){
+  x <- median(data$balance[index])
+  return(x)
 }
 
-model.fn(Default, 1:1000)
-model.fn(Default, sample(1:1000, replace = T))
-
-bootstrap <- boot(Default, model.fn, R = 1000)
-#the median standard error is ~6.5
+#A) Compute the standard error of the median balance.
+bootstrap <- boot(Default, median.fn, R = 1000)
+bootstrap
 
 #B) Compute the 95% confidence interval of the standard error of your prediction
-ci <- 6.5*1.96
-lower <- 6.5 + ci
-upper <- 6.5 - ci
+model.fn <- function(data, index){
+  model <- lm(balance ~ income, data[index,])
+  x <- summary(model)
+  x$sigma
+}
 
-lower
-upper
+temp <- boot(Default, model.fn, R = 1000)
+temp
+478 + 3.1 *1.96 #upper
+478 - 3.1 * 1.96 # lower
