@@ -1,3 +1,8 @@
+#Andrew Clemons
+#Data Analytics 2
+#ISLR 8
+
+
 ####Question 1)####
 #The following code is the result of 10 models predicting a strike for the next pitch in a baseball game. 
 #Solve using majority vote, then solve using average vote. Comment on your findings.
