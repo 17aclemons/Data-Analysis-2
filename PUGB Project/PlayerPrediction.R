@@ -4,9 +4,10 @@ library(caret)
 library(dplyr)
 library(Metrics)
 library(randomForest)
-library(gmb)
+library(gbm)
+library(data.table)
 
-train <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/PUGB Project/train_partition.csv")
+train <- fread("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/PUGB Project/train_partition.csv")
 test <- read.csv("test_V2.csv")
 
 
@@ -18,7 +19,7 @@ train <- train[!is.na(train$winPlacePerc),]
 soloGroup <- function(train_partition) {
   soloTrain <- train_partition %>%
   filter(matchType == "solo" |  matchType == "normal-solo" | matchType == "normal-solo-fpp" 
-         | matchType == "solo-fpp" )
+         | matchType == "solo-fpp" | matchType == "flaretpp"| matchType == "flarefpp")
   #drop group columns in solo set
   drop <- c("DBNOs", "revives", "teamKills","X", "Id", "groupId","matchId","assists")
   soloTrain <- soloTrain[,!names(soloTrain) %in% drop]
@@ -29,7 +30,8 @@ squadGroup <- function(train_partitioin){
   temp <- train_partition %>%
   filter(matchType == "duo" |matchType == "squad" | matchType == "duo-fpp" |
          matchType == "normal-duo-fpp" |  matchType == "normal-squad" 
-         | matchType == "normal-squad-fpp" | matchType == "squad-fpp")
+         | matchType == "normal-squad-fpp" | matchType == "squad-fpp" | matchType == "crashfpp"
+         | matchType == "crashtpp" | matchType == "normal-duo"| matchType == "normal-duo-fpp")
   #might not want to drop group ID
   drop <- c("X", "Id", "groupId","matchId")
   temp <- temp[,!names(temp) %in% drop]
@@ -37,9 +39,9 @@ squadGroup <- function(train_partitioin){
 }
 
 
-#Data splitting
+####Data splitting####
 #partition the data to make it easier to work with
-inTrain <- createDataPartition(y = train$winPlacePerc, p =.8, list = FALSE)
+inTrain <- createDataPartition(y = train$winPlacePerc, p =.01, list = FALSE)
 #create train and testing set
 train_partition <- train[inTrain,]
 test_partition <- train[-inTrain,]
@@ -69,7 +71,9 @@ RMSE(pred, test_partition$winPlacePerc)
 
 #### GBM model ####
 #solo model
-gbm.model <- gbm(
+soloTrain <- soloGroup(train_partition)
+
+solo_gbm.model <- gbm(
   formula = winPlacePerc ~.,
   distribution = "gaussian",
   data = soloTrain,
@@ -77,19 +81,16 @@ gbm.model <- gbm(
   cv.folds = 5,
   verbose = TRUE
 )
-
+soloTest <- soloGroup(test_partition)
 pred <- predict(gbm.model, newdata = soloTest)
-RMSE(pred, test_partition$winPlacePerc)
+
 #optimal number of tree estimate
 ntree_opt_cv <- gbm.perf(gbm.model, method = "cv")
 
-squad <- squadGroup(train_partition)
-
 ####group model####
 squadTrain <- squadGroup(train_partition)
-squadTest <- squadGroup(test_partition)
 
-gbm.model <- gbm(
+group_gbm.model <- gbm(
   formula = winPlacePerc ~.,
   distribution = "gaussian",
   data = squadTrain,
@@ -97,9 +98,8 @@ gbm.model <- gbm(
   cv.folds = 5,
   verbose = TRUE
 )
-
+squadTest <- squadGroup(test_partition)
 pred <- predict(gbm.model, newdata = squadTest)
-RMSE(pred, test_partition$winPlacePerc)
 
 #optimal number of tree estimate
 ntree_opt_cv <- gbm.perf(gbm.model, method = "cv")
