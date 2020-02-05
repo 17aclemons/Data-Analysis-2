@@ -7,12 +7,12 @@ library(randomForest)
 library(gbm)
 library(data.table)
 
-train <- fread("C:/Users/XPS/Desktop/Software/Data-Analysis-2/PUBG CSV's/train_V2.csv")
-setwd("C:/Users/XPS/Desktop/Software/Data-Analysis-2/PUGB Project")
+train <- fread("C:/Users/17acl/OneDrive/Desktop/Software/PUBG CSV's/train_V2.csv")
+setwd("C:/Users/17acl/OneDrive/Desktop/Software/PUBG CSV's")
 ####Data cleaning####
 train <- train[!is.na(train$winPlacePerc),]
 
-####Split to Solo and group games functions ####
+####Separate the Solo and Group (squad and duo) games using functions ####
 
 soloGroup <- function(df) {
   soloTrain <- df %>%
@@ -38,17 +38,25 @@ inTrain <- createDataPartition(y = train$winPlacePerc, p =.01, list = FALSE)
 train_partition <- train[inTrain,]
 #test_partition <- train[-inTrain,]
 remove(train)
-#save for later
+#save for later so you don't have to read in the large file every time
 #write.csv(train_partition, "train_partition.csv")
 #write.csv(test_partition, "test_partition.csv")
+
+####Feature Extraction ####
+train_partition$maxWalkDistance <- train_partition %>%
+                                    group_by(groupId) %>%
+                                    summarise(maxValue = max(walkDistance))
+
 
 ####Training model on solo####
 #group the train and test partitions into only solo games and group games
 soloTrain <- soloGroup(train_partition)
 
+#drop non relevant columns
 drop <- c("DBNOs", "revives", "teamKills","X", "groupId","matchId","assists","roadKills","vehicleDestroys","Id")
 soloTrain <- soloTrain[,!names(soloTrain) %in% drop]
 #soloTest <- soloTest[,!names(soloTest) %in% drop]
+
 squadTrain <- squadGroup(train_partition)
 
 drop <- c("X", "groupId","matchId","Id")
@@ -80,31 +88,32 @@ solo_gbm.model <- gbm(
   formula = winPlacePerc ~., #the model ignores the id column
   distribution = "gaussian",
   data = soloTrain,
-  n.trees = 10000,
-  cv.folds = 5,
+  n.trees = 1000,
+  cv.folds = 10,
   verbose = FALSE
 )
 
 #optimal number of tree estimate
-#ntree_opt_cv <- gbm.perf(solo_gbm.model, method = "cv")
+solo_ntree_opt_cv <- gbm.perf(solo_gbm.model, method = "cv")
 
 ####Group Model####
 group_gbm.model <- gbm(
   formula = winPlacePerc ~.,
   distribution = "gaussian",
   data = squadTrain,
-  n.trees = 7200,
-  cv.folds = 5,
+  n.trees = 1000,
+  cv.folds = 10,
   verbose = FALSE
 )
 
 #optimal number of tree estimate
-#ntree_opt_cv <- gbm.perf(group_gbm.model, method = "cv")
+group_ntree_opt_cv <- gbm.perf(group_gbm.model, method = "cv")
 
 remove(soloTrain,inTrain,squadTrain,test_partition,train_partition)
 #run on the testing set
 test <- fread("C:/Users/XPS/Desktop/Software/Data-Analysis-2/PUBG CSV's/test_V2.csv")
 test$X <- c(1:nrow(test))
+id <- test$Id
 
 soloTest <- soloGroup(test)
 soloX <- soloTest$X
@@ -114,8 +123,8 @@ squadTest <- squadGroup(test)
 squadX <- squadTest$X
 squadTest$matchType <- as.factor(squadTest$matchType)
 
-soloPred <- predict(solo_gbm.model, newdata = soloTest)
-groupPred <- predict(group_gbm.model, newdata = squadTest)
+soloPred <- predict(solo_gbm.model, newdata = soloTest, n.trees = solo_ntree_opt_cv)
+groupPred <- predict(group_gbm.model, newdata = squadTest, n.trees = group_ntree_opt_cv)
 
 soloData <- data.frame("Id" = soloX, "winPlacePerc" = soloPred)
 groupData <- data.frame("Id" = squadX, "winPlacePerc" = groupPred)
@@ -123,6 +132,7 @@ groupData <- data.frame("Id" = squadX, "winPlacePerc" = groupPred)
 submission <- rbind(soloData,groupData)
 submission <- submission %>%
   arrange(submission$Id)
-submission$Id <- as.character(submission$Id)
-fwrite(submission, "submission.csv",quote = TRUE, row.names = FALSE)
+
+submission[,"Id"] <- id
+fwrite(submission, "submission.csv")
 
