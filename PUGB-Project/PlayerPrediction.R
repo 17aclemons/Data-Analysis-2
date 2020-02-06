@@ -43,9 +43,9 @@ remove(train)
 #write.csv(test_partition, "test_partition.csv")
 
 ####Feature Extraction ####
-train_partition$maxWalkDistance <- train_partition %>%
-                                    group_by(groupId) %>%
-                                    summarise(maxValue = max(walkDistance))
+#train_partition$maxWalkDistance <- train_partition %>%
+#                                   group_by(groupId) %>%
+#                                  summarise(maxValue = max(walkDistance))
 
 
 ####Training model on solo####
@@ -59,7 +59,7 @@ soloTrain <- soloTrain[,!names(soloTrain) %in% drop]
 
 squadTrain <- squadGroup(train_partition)
 
-drop <- c("X", "groupId","matchId","Id")
+drop <- c("X", "groupId","matchId","Id","roadKills","vehicleDestroys")
 squadTrain <- squadTrain[,!names(squadTrain) %in% drop]
 #squadTest <- squadTest[,!names(squadTrain) %in% drop]
 
@@ -84,6 +84,8 @@ squadTrain <- squadTrain[,!names(squadTrain) %in% drop]
 
 #### GBM model ####
 #Solo Model
+  #x <- c(2,5,10)
+  #for(i in x){
 solo_gbm.model <- gbm(
   formula = winPlacePerc ~., #the model ignores the id column
   distribution = "gaussian",
@@ -92,11 +94,13 @@ solo_gbm.model <- gbm(
   cv.folds = 10,
   verbose = FALSE
 )
-
+#}
 #optimal number of tree estimate
 solo_ntree_opt_cv <- gbm.perf(solo_gbm.model, method = "cv")
 
 ####Group Model####
+#x <- c(2,5,10)
+#for(i in x){
 group_gbm.model <- gbm(
   formula = winPlacePerc ~.,
   distribution = "gaussian",
@@ -105,7 +109,7 @@ group_gbm.model <- gbm(
   cv.folds = 10,
   verbose = FALSE
 )
-
+#}
 #optimal number of tree estimate
 group_ntree_opt_cv <- gbm.perf(group_gbm.model, method = "cv")
 
