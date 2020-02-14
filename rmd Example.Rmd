@@ -1,0 +1,90 @@
+---
+title: "Example1"
+author: "Jacob Miller"
+date: "February 13, 2019"
+output: 
+  html_document:
+    theme: spacelab
+    toc: true
+    number_sections: true
+---
+
+Your instructions:
+Turn Motor Trend Car Road Tests into a first level header
+Turn the word description into a second level header.
+Put the word fuel in monospaced font (for code).
+Italicize the words 1974 Motor Trend US magazine.
+Link the work Biometrics to www.google.com.
+Create an ordered list of the steps to take.
+Create a bulleted list of the afterparty celebrations.
+For future reference, include a Latex formula. Put two dollar signs around kelvin = celsius - 273.15.
+That way we can remind ourselves how cold it will be when the universe turns dark.
+Put in a line informing us of the date with single backticks today's date. Use r Sys.Date().
+Go to the coding section below for further instructions.
+
+
+# Motor Trend Car Road Tests
+
+## Description
+
+The data was extracted from the *1974 Motor Trend US magazine*, and comprises `fuel` consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+
+Source
+
+Henderson and Velleman (1981), Building multiple regression models interactively. [Biometrics](google.com), 37, 391-411.
+
+Steps to take
+
+1. Perform exploratory data analysis
+2. Evaluate correlations
+3. Run a linear regression
+
+Afterparty celebrations
+
+* Non-caffeinated Barq's root beer
+* Proper rest
+
+$$ kelvin = celcius - 273.15 $$
+
+
+Today's date is `r Sys.Date()`
+
+Let's start coding--
+Create a code block showing the first 5 lines of the mtcars dataset.
+```{r First Five Lines}
+head(mtcars)
+```
+
+Create a scatterplot with mpg on the x axis and cyl on the y axis.
+```{r Scatterplot1}
+plot(mtcars$mpg, mtcars$cyl)
+```
+
+Load the dplyr library, but suppress the messages associated with it.
+```{r dplyr is the name of the library,  message = FALSE, warning = FALSE}
+library(dplyr)
+
+```
+
+Run three separate chunks of code with some basic manipulations of the mtcars dataset, but with different chunk options. Run echo=FALSE, eval=FALSE, and results='hide'. What is the difference between them?
+```{r manipulation1, echo = FALSE}
+  example1 <- mean(mtcars$mpg)
+  example1
+```
+
+```{r manipulations2, eval = FALSE}
+  example2 <- mean(mtcars$mpg)
+  example2
+```
+
+```{r manipulations3, results = 'hide'}
+  example3 <- mean(mtcars$mpg)
+  example3
+```
+
+Create a graph and use fig.height = 4 and fig.width = 5 as chunk options. What do you notice?
+```{r}
+plot(mtcars$cyl, mtcars$mpg)
+```
+
+Use output: html_document: theme:spacelab with proper indentation to check out what can be done visually. Add toc: true as well to check out the automatic table of contents.
