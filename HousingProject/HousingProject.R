@@ -3,20 +3,22 @@
 
 library(caret)
 library(e1071)
-#import for laptop
-train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
-test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+library(ggplot2)
 
-#import desktop
+progress = data.frame("Attempt" = c(1,2,3), "Score" = c(18.16, 18.5, 17.85))
 
-#copy data frames for ease
-train <- train_df
-test <- test_df
+####Import Laptop####
+#train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
+#test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+
+####Import Desktop####
+train_df <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/train.csv",stringsAsFactors = TRUE)
+test_df <- test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
 
 ####Functions####
 #remove missing values by calculating mean for numerics and mode for factors
-clean_values <- function(df_column){
-  if(class(df_column) == "integer"){
+clean_all_values <- function(df_column){
+  if(class(df_column) == "integer" | class(df_column) == "numeric"){
     mean <- mean(df_column,na.rm = TRUE)
     df_column <- ifelse(is.na(df_column)== TRUE, mean, df_column)
     return(df_column)
@@ -26,6 +28,7 @@ clean_values <- function(df_column){
     }else{
     mode <- getmode(df_column)
     df_column <- ifelse(is.na(df_column) == TRUE, mode, df_column)
+    return(df_column)
     }
   }
 }
@@ -35,7 +38,7 @@ getmode <- function(v) {
   uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 #run clean_values on a dataframe
-run_clean_values <- function(df){
+run_clean_all_values <- function(df){
   for(i in 1:ncol(df)){
     df[,i] <- clean_values(df[,i])
   }
@@ -47,12 +50,31 @@ run_clean_values <- function(df){
 #create kaggle submission
 submission <- function(test_id, pred){
   submission <- data.frame("Id" = test_id, "SalePrice" = pred)
-  write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
+  #write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
+  write.csv(submission, "C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv", row.names = FALSE)
 }
 
 ####Clean Data ####
-train <- run_clean_values(train)
-test <- run_clean_values(test)
+#copy data frames for ease
+train <- train_df
+test <- test_df
+
+#Using the old Noggin
+#get a list of the columns with NA's
+
+clean_df <- function(df){
+  df$MSZoning <- ifelse(is.na(df$LotFrontage) == TRUE, median(df$LotFrontage), df$LotFrontage)
+  df$Alley <- ifelse(is.na(df$Alley) == TRUE, as.factor("None"), df$Alley)
+  
+  return(df)
+}
+list <- apply(is.na(train), 2, which)
+#clean the rest of the variables
+train <- clean_df(train)
+test <- clean_df(test)
+
+train <- run_clean_all_values(train)
+test <- run_clean_all_values(test)
 
 #create validation set
 inTrain <- createDataPartition(y = train$SalePrice, p = .8, list = FALSE)
@@ -61,8 +83,8 @@ validation <- train[-inTrain,]
 
 ####Run Linear Regression####
 lm_model <- lm(SalePrice ~., data = train)
-lm_pred <- predict(object = lm_model, newdata = test)
-
+lm_pred <- predict(object = lm_model, newdata = validation)
+RMSE(lm_pred, pred = validation$SalePrice)
 
 ####Lasso and Ridge Regression
 control <- trainControl(
@@ -73,5 +95,15 @@ zero <- expand.grid(alpha = 0, lambda = set)
 one <- expand.grid(alpha = 1, lambda = set)
 
 ridge_model <- train(SalePrice ~., data = train_df)
+
+#### PCA ####
+pca_model <- prcomp(train, scale = TRUE)
+pca.var <- pca_model$sdev^2
+pve <- pca.var/sum(pca.var)
+head(pve)
+biplot(pca_model, scale = TRUE)
+
+
+
 
 
