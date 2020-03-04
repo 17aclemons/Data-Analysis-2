@@ -5,33 +5,30 @@ library(caret)
 library(e1071)
 library(ggplot2)
 library(dplyr)
-
+library(mltools)
 #To Do
-#get a 
 #Tune Linear, Ridge and Lasso models
 #figure out PCA model
-#what other models do I need?
-#
 
 progress = data.frame("Attempt" = c(1,2,3,4,5), "Score" = c(18.16, 18.5, 17.85, 17, 16.7))
 
 ####Import Laptop####
-#train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
-#test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
+test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
 
 ####Import Desktop####
-train_df <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/train.csv",stringsAsFactors = TRUE)
-test_df <- test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+#train_df <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/train.csv",stringsAsFactors = TRUE)
+#test_df <- test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
 
 ####Functions####
 #Using the old Noggin
 #more accurate clean function for each variable
 clean_df <- function(df){
   #df$MSZoning <- ifelse(df$MSZoning == as.factor("C (all)"), as.facor("C", ))
-  df$LotFrontage <- ifelse(is.na(df$LotFrontage) == TRUE, 0, df$LotFrontage) #editable
+  df$LotFrontage <- ifelse(is.na(df$LotFrontage) == TRUE, median(df$LotFrontage), df$LotFrontage) #editable
   df$Alley <- ifelse(is.na(df$Alley) == TRUE, as.factor("None"), df$Alley) #explained in documentation
   df$MasVnrType <- ifelse(is.na(df$MasVnrType) == TRUE, as.factor("None"),df$MasVnrType) #editable
-  df$MasVnrArea <- ifelse(is.na(df$MasVnrArea) == TRUE, 0, df$MasVnrArea) #Editable with type
+  df$MasVnrArea <- ifelse(is.na(df$MasVnrArea) == TRUE, median(df$MasVnrArea), df$MasVnrArea) #Editable with type
   df$BsmtQual <- ifelse(is.na(df$BsmtQual) == TRUE, as.factor("No Basement"), df$BsmtQual) #explained in documentation
   df$BsmtCond <- ifelse(is.na(df$BsmtCond) == TRUE, as.factor("No Basement"), df$BsmtCond) #explained in documentation
   df$BsmtExposure <- ifelse(is.na(df$BsmtExposure) == TRUE, as.factor("No Basement"), df$BsmtExposure) #explained in documentation
@@ -87,10 +84,10 @@ run_clean_all_values <- function(df){
 submission <- function(test_id, pred){
   submission <- data.frame("Id" = test_id, "SalePrice" = pred)
   #laptop
-  #write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
+  write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
   
   #desktop
-  write.csv(submission, "C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv", row.names = FALSE)
+  #write.csv(submission, "C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv", row.names = FALSE)
 }
 
 ####Clean Data ####
@@ -110,13 +107,14 @@ train <- run_clean_all_values(train)
 test <- run_clean_all_values(test)
 
 #create validation set
-# inTrain <- createDataPartition(y = train$SalePrice, p = .8, list = FALSE)
-# train_set <- train[inTrain,]
-# validation <- train[-inTrain,]
+set.seed(1)
+inTrain <- createDataPartition(y = train$SalePrice, p = .8, list = FALSE)
+train_set <- train[inTrain,]
+validation <- train[-inTrain,]
 
 ####Run Linear Regression####
-lm.model <- lm(SalePrice ~., data = train)
-lm_pred <- predict(object = lm.model, newdata = test)
+lm.model <- lm(SalePrice ~., data = train_set)
+lm_pred <- predict(object = lm.model, newdata = validation)
 RMSE(lm_pred, pred = validation$SalePrice)
 
 ####Lasso and Ridge Regression ####
@@ -148,6 +146,9 @@ pca.var <- pca_model$sdev^2
 pve <- pca.var/sum(pca.var)
 head(pve)
 biplot(pca_model, scale = TRUE)
+
+#### Random Forest ####
+#### Boosting ####
 
 ####Knn impute trial (doesnt' work as it gives some factors only one factor####
 # list <- colnames(train)[colSums(is.na(train)) >0]
