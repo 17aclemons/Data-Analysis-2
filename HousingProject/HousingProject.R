@@ -6,11 +6,12 @@ library(e1071)
 library(ggplot2)
 library(dplyr)
 library(mltools)
+library(randomForest)
+library(gbm)
 #To Do
-#Tune Linear, Ridge and Lasso models
-#figure out PCA model
+#Tune GBM model
 
-progress = data.frame("Attempt" = c(1,2,3,4,5), "Score" = c(18.16, 18.5, 17.85, 17, 16.7))
+progress = data.frame("Attempt" = c(1,2,3,4,5,6), "Score" = c(18.16, 18.5, 17.85, 17, 16.7,14.6))
 
 ####Import Laptop####
 train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
@@ -22,6 +23,12 @@ test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProjec
 
 ####Functions####
 #Using the old Noggin
+#got mode function from https://www.tutorialspoint.com/r/r_mean_median_mode.htm
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
 #more accurate clean function for each variable
 clean_df <- function(df){
   #df$MSZoning <- ifelse(df$MSZoning == as.factor("C (all)"), as.facor("C", ))
@@ -64,11 +71,6 @@ clean_all_values <- function(df_column){
   }
 }
 
-#got mode function from https://www.tutorialspoint.com/r/r_mean_median_mode.htm
-getmode <- function(v) {
-  uniqv <- unique(v)
-  uniqv[which.max(tabulate(match(v, uniqv)))]
-}
 
 #run clean_values on a dataframe
 run_clean_all_values <- function(df){
@@ -119,21 +121,25 @@ RMSE(lm_pred, pred = validation$SalePrice)
 
 ####Lasso and Ridge Regression ####
 control <- trainControl(
-  method = "cv", number = 3, verboseIter = TRUE
+  method = "cv", number = 5, verboseIter = TRUE
 )
+set.seed(1)
 #how do I use this to tune ridge and lasso
-set <- c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1,2,100)
+set <- seq(from = 0, to = 60000, by = 1000)
 zero <- expand.grid(alpha = 0, lambda = set)
-one <- expand.grid(alpha = 1, lambda = set)
 
-ridge.model <- train(SalePrice ~., data = train,
+ridge.model <- train(SalePrice ~., data = train, #cv.glmnet see if data is scaled
                      method = "glmnet",
                      tuneGrid = zero,
                      trControl = control
                      )
-ridge_pred <- predict(ridge_model, newdata = test)
+ridge_pred <- predict(ridge.model, newdata = test)
 
-lasso.model <- train(SalePrice ~., data = train,
+set.seed(1)
+set <- seq(from = 0, to = 5000, by = 100)
+set <- 2400
+one <- expand.grid(alpha = 1, lambda = set)
+lasso.model <- train(SalePrice ~., data = train, #cv.glmnet
                      method = "glmnet",
                      tuneGrid = one,
                      trControl = control
@@ -141,14 +147,41 @@ lasso.model <- train(SalePrice ~., data = train,
 lasso_pred <- predict(lasso.model, newdata = test)
 
 #### PCA ####
-pca_model <- prcomp(train, scale = TRUE)
-pca.var <- pca_model$sdev^2
-pve <- pca.var/sum(pca.var)
-head(pve)
-biplot(pca_model, scale = TRUE)
+pca <- prcomp(train[,1:80], scale = TRUE)
+pca <- data.frame(pca$x)
+pca <- pca[,1:20]
+pca <- cbind(pca, train[,81])
+names(pca)[21] <- "SalePrice"
+pca_model <- lm(SalePrice ~., data = pca)
+
+temp <- test[,which(apply(test,2,var) != 0)]
+pca_test <- prcomp(temp, scale = TRUE)
+pca_test <- data.frame(pca_test$x)
+pca_test <- pca_test[,1:20]
+pca_pred <- predict(pca_model, newdata = pca_test)
 
 #### Random Forest ####
+rf.model <- randomForest(SalePrice~.,
+                         data = train,
+                         importance = TRUE)
+
+rf_pred <- predict(rf.model, newdata = test)
+
 #### Boosting ####
+gbm.model <- gbm(
+    formula = SalePrice~.,
+    distribution = "gaussian",
+    data = train,
+    n.trees = 810,
+    interaction.depth = 20,
+    cv.folds = 3,
+    verbose = FALSE
+)
+
+gbm_pred <- predict(gbm.model, newdata = test)
+#RMSE(gbm_pred, validation$SalePrice)
+
+submission(test$Id, gbm_pred)
 
 ####Knn impute trial (doesnt' work as it gives some factors only one factor####
 # list <- colnames(train)[colSums(is.na(train)) >0]
@@ -168,9 +201,4 @@ biplot(pca_model, scale = TRUE)
 # test_sample <- sapply(test, function(x) is.factor(x))
 # train_sample <- sapply(train, function(x) is.factor(x))
 # train_sample
-
-
-#group missing values in test set to similiar entries (in progress)
-temp <- test %>%
-  filter(is.na(MSZoning))
 
