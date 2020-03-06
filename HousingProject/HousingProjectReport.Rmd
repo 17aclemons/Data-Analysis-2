@@ -1,0 +1,89 @@
+---
+title: "HousingProjectReport"
+author: "Andrew Clemons"
+date: "3/5/2020"
+output:
+  html_document:
+    theme: journal
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+# Data Exploration
+
+At first look there is more to be desired from the data. With almost 7000 missing values for different observations and variables, it was difficult to find a place to start. The data set contained 1459 observations with 81 variables. The txt file in Kaggle was incredibly useful to understand what each column was. Creating a PCA model showed that only 30% of the variance of the data is explained with the the first five Principle Components. With such low proportion of the variance it makes it difficult to guess what the first principle component could be. 
+``` {r PCA Model, echo = FALSE}
+#temp$importance[,1:5]
+
+```
+# Data Cleaning
+
+I began by creating a function for cleaning every variable based on its class. I replaced integer columns with the mean of the column with all NA's removed and for factor columns I calculated the mode and replaced the NA's. 
+
+``` {r Initial Cleaning Function}
+  clean_all_values <- function(df_column){
+  if(class(df_column) == "integer" | class(df_column) == "numeric"){
+    mean <- mean(df_column,na.rm = TRUE)
+    df_column <- ifelse(is.na(df_column)== TRUE, mean, df_column)
+    return(df_column)
+  }else if(class(df_column) == "factor"){
+    if(is.na(getmode(df_column))){
+      df_column <- ifelse(is.na(df_column) == TRUE, as.factor("other"), df_column)
+    }else{
+    mode <- getmode(df_column)
+    df_column <- ifelse(is.na(df_column) == TRUE, mode, df_column)
+    return(df_column)
+    }
+  }
+}
+```
+This allowed to me to run a linear regression model quickly to gauge what needed to be done to the missing data and became the benchmark for comparing other cleaning methods and trained models. 
+
+After creating a benchmark model, I created a separate cleaning function that I could clean each column more accurately and then test it. This allowed me to examine my cleaning steps iteratively and decide which method was better for each variable.  
+```{r My Cleaning Function}
+clean_df <- function(df){
+  df$LotFrontage <- ifelse(is.na(df$LotFrontage) == TRUE, median(df$LotFrontage), df$LotFrontage) #editable
+  df$Alley <- ifelse(is.na(df$Alley) == TRUE, as.factor("None"), df$Alley) #explained in documentation
+  df$MasVnrType <- ifelse(is.na(df$MasVnrType) == TRUE, as.factor("None"),df$MasVnrType) #editable
+  df$MasVnrArea <- ifelse(is.na(df$MasVnrArea) == TRUE, median(df$MasVnrArea), df$MasVnrArea) #Editable with type
+  df$BsmtQual <- ifelse(is.na(df$BsmtQual) == TRUE, as.factor("No Basement"), df$BsmtQual) #explained in documentation
+  df$BsmtCond <- ifelse(is.na(df$BsmtCond) == TRUE, as.factor("No Basement"), df$BsmtCond) #explained in documentation
+  df$BsmtExposure <- ifelse(is.na(df$BsmtExposure) == TRUE, as.factor("No Basement"), df$BsmtExposure) #explained in documentation
+  df$BsmtFinType1 <- ifelse(is.na(df$BsmtFinType1) == TRUE, as.factor("No Basement"), df$BsmtFinType1) #explained in documentation
+  df$BsmtFinType2 <- ifelse(is.na(df$BsmtFinType2) == TRUE, as.factor("No Basement"), df$BsmtFinType2) #explained in documentation
+  df$Electrical <- ifelse(is.na(df$Electrical) == TRUE, as.factor("SBrkr"), df$Electrical) #editable, SBrkr is the mode of the column
+  df$FireplaceQu <- ifelse(is.na(df$FireplaceQu) == TRUE,as.factor("No Fireplace"), df$FireplaceQu) #explained in documentation
+  df$GarageType <- ifelse(is.na(df$GarageType) == TRUE, as.factor("No Garage"), df$GarageType) #explained in documentation
+  df$GarageYrBlt <- ifelse(is.na(df$GarageYrBlt) == TRUE, 0, df$GarageYrBlt) #explained in documentation
+  df$GarageFinish <- ifelse(is.na(df$GarageFinish) == TRUE, as.factor("No Garage"), df$GarageFinish) #explained in documentation
+  df$GarageQual <- ifelse(is.na(df$GarageQual) == TRUE, as.factor("No Garage"), df$GarageQual) #explained in documentation
+  df$GarageCond <- ifelse(is.na(df$GarageCond) == TRUE, as.factor("No Garage"), df$GarageCond) #explained in documentation
+  df$PoolQC <- ifelse(is.na(df$PoolQC) == TRUE, as.factor("No Pool"), df$PoolQC) #explained in documentation
+  df$Fence <- ifelse(is.na(df$Fence) == TRUE, as.factor("No Pool"), df$Fence) #explained in documentation
+  df$MiscFeature <- ifelse(is.na(df$MiscFeature) == TRUE, as.factor("No Pool"), df$MiscFeature) #explained in documentation
+  return(df)
+}
+
+```
+# Training Models
+
+## Lasso and Ridge Regression
+Using linear regression as a baseline, I then created lasso and ridge models. They performed better than standard linear regression after getting the proper value for lamba. Lasso performed worse that ridge regression and I believe it is that even with an optimal lambda, it was allocating its budget to variablse that weren't as valuable as others so this inefficency lead to its poor performance. 
+
+## PCA
+Due to the nature of the data, my PCA model performed the worst out of all the models. I used the first 20 PCs which explained about 60% of the data. A large portion of the data can't be explained by a single PC due to the variablitity in the data. 
+
+## Random Forest and GBM
+I created and basic Random Forest and GBM models and evaluated them. GBM performed better than Random Forest from the start I decided that tuning my GBM model would lead to the best results in the time I had left. 
+
+## GBM Tuning
+Using cross validation allowed me to find the optimal number of trees ~410 and then using a for loop I was able to train multiple models with different interaction depths and learning rates and evaluate there RMSE. I got the lowest RMSE with an interaction depth of 20 and the default value for learning rate. Increasing the interaction rate lead to a better RMSE but a worse Kaggle score, so I believe that this is where I was starting to overfit my model on my validation set and had to reoptimize to where it wasn't overfitting. 
+
+# Accuracy
+```{r Progress Plot, echo = FALSE, tidy = TRUE}
+  progress = data.frame("Attempt" = c(1,2,3,4,5,6,7), "Score" = c(18.16, 18.5, 17.85, 17, 16.7,14.6,13.2))
+plot(progress)
+```
+
+This progress plot shows how my accuracy improved over different attempts on Kaggle. This isn't the complete true as I omitted some of the Kaggle submissions because I just started to submit them at the end to see if I could improve my score. Attempt 7 was the best score that I recieved on Kaggle. 

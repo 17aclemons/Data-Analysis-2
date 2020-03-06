@@ -11,15 +11,15 @@ library(gbm)
 #To Do
 #Tune GBM model
 
-progress = data.frame("Attempt" = c(1,2,3,4,5,6), "Score" = c(18.16, 18.5, 17.85, 17, 16.7,14.6))
+progress = data.frame("Attempt" = c(1,2,3,4,5,6,7), "Score" = c(18.16, 18.5, 17.85, 17, 16.7,14.6,13.2))
 
 ####Import Laptop####
-train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
-test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+#train_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/train.csv", stringsAsFactors = TRUE)
+#test_df <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
 
 ####Import Desktop####
-#train_df <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/train.csv",stringsAsFactors = TRUE)
-#test_df <- test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
+train_df <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/train.csv",stringsAsFactors = TRUE)
+test_df <- test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/test.csv", stringsAsFactors = TRUE)
 
 ####Functions####
 #Using the old Noggin
@@ -31,7 +31,6 @@ getmode <- function(v) {
 
 #more accurate clean function for each variable
 clean_df <- function(df){
-  #df$MSZoning <- ifelse(df$MSZoning == as.factor("C (all)"), as.facor("C", ))
   df$LotFrontage <- ifelse(is.na(df$LotFrontage) == TRUE, median(df$LotFrontage), df$LotFrontage) #editable
   df$Alley <- ifelse(is.na(df$Alley) == TRUE, as.factor("None"), df$Alley) #explained in documentation
   df$MasVnrType <- ifelse(is.na(df$MasVnrType) == TRUE, as.factor("None"),df$MasVnrType) #editable
@@ -86,10 +85,10 @@ run_clean_all_values <- function(df){
 submission <- function(test_id, pred){
   submission <- data.frame("Id" = test_id, "SalePrice" = pred)
   #laptop
-  write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
+  #write.csv(submission, "C:/Users/XPS/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv",row.names = FALSE)
   
   #desktop
-  #write.csv(submission, "C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv", row.names = FALSE)
+  write.csv(submission, "C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/HousingProject/submission.csv", row.names = FALSE)
 }
 
 ####Clean Data ####
@@ -148,6 +147,8 @@ lasso_pred <- predict(lasso.model, newdata = test)
 
 #### PCA ####
 pca <- prcomp(train[,1:80], scale = TRUE)
+temp <- summary(pca)
+temp$importance[,1:5]
 pca <- data.frame(pca$x)
 pca <- pca[,1:20]
 pca <- cbind(pca, train[,81])
@@ -163,7 +164,8 @@ pca_pred <- predict(pca_model, newdata = pca_test)
 #### Random Forest ####
 rf.model <- randomForest(SalePrice~.,
                          data = train,
-                         importance = TRUE)
+                         importance = TRUE,
+                         verbose = TRUE)
 
 rf_pred <- predict(rf.model, newdata = test)
 
@@ -179,26 +181,5 @@ gbm.model <- gbm(
 )
 
 gbm_pred <- predict(gbm.model, newdata = test)
-#RMSE(gbm_pred, validation$SalePrice)
-
-submission(test$Id, gbm_pred)
-
-####Knn impute trial (doesnt' work as it gives some factors only one factor####
-# list <- colnames(train)[colSums(is.na(train)) >0]
-# process <- preProcess(train %>%
-#                         dplyr::select(list),
-#                       method = c("knnImpute"),
-#                       k = 10,
-#                       knnSummary = mean)
-# 
-# list <- colnames(test)[colSums(is.na(test)) >0]
-# process <- preProcess(test %>%
-#                         dplyr::select(list),
-#                       method = c("knnImpute"),
-#                       k = 10,
-#                       knnSummary = mean)
-# 
-# test_sample <- sapply(test, function(x) is.factor(x))
-# train_sample <- sapply(train, function(x) is.factor(x))
-# train_sample
+RMSE(gbm_pred, validation$SalePrice)
 
