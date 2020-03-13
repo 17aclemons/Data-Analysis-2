@@ -49,13 +49,18 @@ plot(tune.poly)
 
 ####2)####
 #Perform an ROC on the previous problem. I recommend follow the steps in the lab.
-rocplot =function (pred , truth){
+rocplot =function (pred , truth,...){
   predob = prediction (pred , truth)
   perf = performance (predob , "tpr", "fpr")
-  plot(perf)
+  plot(perf,...)
 }
 
-svm.linear.opt <- svm(mpg ~., data = df, kernel = "radial", cost = 10, decision.values = TRUE)
-fitted <- attributes(predict(svm.linear.opt, df, decision.values = TRUE))$decision.values
-
-rocplot(fitted, df, add = TRUE, col = "red")
+svm.linear.opt <- svm(mpg ~., data = df, kernel = "linear", cost = 10, decision.values = TRUE)
+svm.radial.opt <- svm(mpg ~., data = df, kernel = "radial", cost = 10, decision.values = TRUE)
+svm.poly.opt <- svm(mpg ~., data = df, kernel = "polynomial", cost = 10, decision.values = TRUE)
+linear <- attributes(predict(svm.linear, df, decision.values = TRUE))$decision.values
+radial <- attributes(predict(svm.radial.opt, df, decision.values = TRUE))$decision.values
+poly <- attributes(predict(svm.poly.opt, df, decision.values = TRUE))$decision.values
+rocplot(linear, df$mpg, main = "Linear")
+rocplot(radial, df$mpg, main = "Radial")
+rocplot(poly,df$mpg, main = "Polynomial")
