@@ -64,3 +64,12 @@ fitted <- attributes(predict(svm.flex, df, decision.values = TRUE))$decision.val
 rocplot(fitted, df)
 
 
+svm.linear.opt <- svm(mpg ~., data = df, kernel = "linear", cost = 10, decision.values = TRUE)
+svm.radial.opt <- svm(mpg ~., data = df, kernel = "radial", cost = 10, decision.values = TRUE)
+svm.poly.opt <- svm(mpg ~., data = df, kernel = "polynomial", cost = 10, decision.values = TRUE)
+linear <- attributes(predict(svm.linear, df, decision.values = TRUE))$decision.values
+radial <- attributes(predict(svm.radial.opt, df, decision.values = TRUE))$decision.values
+poly <- attributes(predict(svm.poly.opt, df, decision.values = TRUE))$decision.values
+rocplot(linear, df$mpg, main = "Linear")
+rocplot(radial, df$mpg, main = "Radial")
+rocplot(poly,df$mpg, main = "Polynomial")
