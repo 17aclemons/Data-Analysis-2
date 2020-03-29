@@ -10,16 +10,25 @@ library(ggbiplot)
 library(stats)
 library(ranger)
 library(dplyr)
-train <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/train.csv")
-test <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/test.csv")
+library(e1071)
+#Desktop
+#train <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/train.csv")
+#test <- read.csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/test.csv")
 
-progress <- data.frame("Attempt" = c(1), "Score" = c(.42), "Model" = c("RandomForest"))
+#Laptop
+train <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/MNIST-Project/train.csv")
+test <- read.csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/MNIST-Project/test.csv")
+
+progress <- data.frame("Attempt" = c(1,2), "Score" = c(.42,.68), "Model" = c("RandomForest","Tuned Ranger"))
 ####Functions####
 submission <- function(label, pred){
   submission <- data.frame("ImageId" = label, "Label" = pred)
   
   #desktop
-  write.csv(submission,"C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/submission.csv", row.names = FALSE)
+  #write.csv(submission,"C:/Users/XPS/Desktop/Software/Data-Analysis-2/MNIST-Project/submission.csv", row.names = FALSE)
+  
+  #Laptop
+  write.csv(submission,"C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/MNIST-Project/submission.csv", row.names = FALSE)
 }
 
 ####Data Exploration####
@@ -57,10 +66,10 @@ rf <- randomForest(label ~., data = train,
 #tune grid for Ranger
 #got the base code from https://uc-r.github.io/random_forests#tune
 
-tune.grid <- expand.grid(mtry = seq(35, 45, by = 2),
-                         num.trees = seq(100,500, by = 100),
-                         node_size = seq(3,9, by =2),
-                         sampe_size = c(.55,.632,.70,.80),
+tune.grid <- expand.grid(mtry = seq(100, 200, by = 10),
+                         num.trees = seq(400,500, by = 100),
+                         node_size = seq(9,9, by =2),
+                         sampe_size = c(.80),
                          OOB_RMSE = 0
                          )
 
@@ -80,16 +89,27 @@ tune.grid %>%
   arrange(OOB_RMSE) %>%
   head(10)
 
+#build ranger model using values from tune.grid
 opt.ranger <- ranger(label~.,
                      data = train,
                      num.trees = 500,
+                     mtry = 140,
+                     min.node.size = 9, 
+                     sample.fraction = .8,
+                     seed = 1
                      )
 
-rf.pred <- predict(rf, newdata = test)
-rf.pred <- round(rf.pred)
+rf.pred <- predict(opt.ranger, validation)
+rf.pred <- round(rf.pred$predictions)
 num <- 1:nrow(test)
+confusionMatrix(as.factor(rf.pred), as.factor(validation$label))
+
 submission(num, rf.pred)
 
 ####SVM####
+train$label <- as.factor(train$label)
+train.svm <- svm(label~., data = train, kernel = "polynomial", cost = 10)
+tune.svm <- tune()
 
 ####Neural Network####
+
