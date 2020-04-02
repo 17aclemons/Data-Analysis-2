@@ -1,0 +1,108 @@
+---
+title: "MNIST-Project"
+author: "Andrew Clemons"
+date: "3/31/2020"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+# Data Exploration
+I began exploration by running PCA and creating an elbow plot. This showed that the largest amount of explanation from a Principle Components was less the 6%. This was expected as you need more than a few pixels to determine if it contributed to the picture. But, this showed that a large part of the data set could be removed as it didn't contribute a significant amount of information. Here is the code, R doesn't let me plot it.
+
+``` {r PCA Plot, eval = FALSE}
+data.pca <- train[, apply(train, 2, var, na.rm = TRUE) != 0]
+train.pca <- prcomp(data.pca, center =TRUE, scale = TRUE)
+ggbiplot(train.pca)
+train.var <- train.pca$sdev^2
+pve <- train.var/sum(train.var)
+plot(pve, xlab = "Principle Component", 
+     ylab = "Proportion of Variance Explained",
+     ylim = c(0,.06), type = "b") 
+```
+# Data Cleaning
+
+The only cleaning I did to the data was what Professor Miller showed us in his demo. Removing columns that aren't ever used help with the computational speed. I didn't want to potentially reduce the accuracy of my model and the models were being ran in a reasonable amount of time so I didn't remove near zero columns. If I needed to make the model faster, that would be one of the first places to start. 
+```{r Cleaning the Training set, eval = FALSE}
+train[,2:ncol(train)] <- train[2:ncol(train)]/255
+zero_feature <- sapply(train[,2:ncol(train)], max) != 0
+train <- train[,c(TRUE,zero_feature)]
+train$label <- as.factor(train$label)
+```
+
+# Training Models
+
+## Random Forest Model
+
+I began by running the default Random Forest just to get a sumission to kaggle. I then created a Ranger template and a tune gride data frame. Ranger is faster than Random Forest and since I was creating a large amount of models with the tune grid, speed is very important. Then I used a for loop to create Ranger models using the values in my tune grid to then find the model parameters that result in the lowest RMSE. 
+``` {r tune grid, eval = FALSE}
+tune.grid <- expand.grid(mtry = seq(100, 200, by = 10),
+                         num.trees = seq(400,500, by = 100),
+                         node_size = seq(9,9, by =2),
+                         sampe_size = c(.80),
+                         OOB_RMSE = 0
+                         )
+```
+Final Ranger Model
+
+Kaggle Score 91%
+``` {r Final Ranger Model, eval = FALSE}
+opt.ranger <- ranger(label~.,
+                     data = train,
+                     num.trees = 500,
+                     mtry = 140,
+                     min.node.size = 9, 
+                     sample.fraction = .8,
+                     seed = 1
+                     )
+```
+## SVM Model
+I had a very similar approach to SVM's as I did with Random Forest. I followed the process in the book and good very good results. I build polynomial and radial svm models because I wasn't sure how to tell which would be better before hand. I created two vectors for cost and gamma and then used the tune function to tune them. 
+```{r Cost and Gamma, eval = FALSE}
+c <- c(.001,.01,.1,1)
+g <- c(.5,1,10)
+
+tune.poly <- tune(svm, label~., data = train, 
+                  kernel = "polynomial", 
+                  ranges = list(cost = c, gamma = g))
+
+```
+I found that I was getting the same RMSE as I decreased cost and gamma. So I went back and selected cost and gamma that gave me the lowest RMSE so that I wouldn't be overfitting my model. I got about a 97% score on Kaggle, which might have been a luck of the draw on my seed selection, which could compete with some Neural Networks.
+
+Final Polynomial SVM model
+
+Kaggle Score 97.6%
+```{r Final Polynomial SVM, eval = FALSE}
+train.opt.poly <- svm(label~., data = train, kernel = "polynomial", cost = .001, gamma = .5)
+```
+
+## Neural Network Model
+Once I got my Neural Network working, I essentially brute forced the optimization of my Neural Netowork by building models on both my computer and within Kaggle's notebooks. I worked through different combinations of hidden layers and then once I found one that gave me the best results I increased the iterations to get the highest score possible on Kaggle. 
+
+Final Neural Network 
+
+Kaggle score 91%
+```{r Neural Networks, eval = FALSE}
+nn1 <- mlp(x = split$inputsTrain, y = split$targetsTrain,
+               size = c(25,25), maxit = 500,
+               inputsTest = split$inputsTest,
+               targetsTest = split$targetsTest)
+```
+# Accuracy
+Here is a plot of the accuracy of my submissions and what model was used. 
+```{r Progress Plot}
+progress <- data.frame("Attempt" = c(1,2,3,4,5,6,7), 
+                       "Score" = c(.42,.68,.91,.92,.11,.97,.88), 
+                       "Model" = c("RandomForest",
+                                   "Tuned Ranger",
+                                   "the same ranger with different seed?",
+                                   "Tuned Poly SVM",
+                                   "Tuned Radial SVM",
+                                   "Tuned Poly on Full Training set",
+                                   "First Neural Network"))
+
+plot(x = progress$Attempt, y = progress$Model, "l", xlab = "Attempt", ylab = "Model")
+text(x = progress$Attempt, y = progress$Model, labels = progress$Model, data = progress)
+```
