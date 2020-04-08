@@ -1,0 +1,17 @@
+---
+title: "Milestone 1"
+author: "Andrew Clemons"
+date: "4/7/2020"
+output: 
+  html_document:
+    theme: journal
+---
+
+# Question to Answer
+I believe that what we are looking to solve is the total amount of items to order to minimize the amount of missed sales and money tied up funds in inventory and warehouse space within varying time periods. 
+
+# Data Exploration and Insights
+I first grouped by Amazon ID and region so I could group the vendors and then used summary functions to see the ranges of each value of the data. There are multiple variables that don't have documentation to explain what they are, like vendor_id_min. I tried different plots to understand the shape of the data but they didn't add a lot of value (I also still don't know how to add plots to RMD). I also ran a generic Random Forest Model and used the VarImpPlot function to see what variables were more important. Units and buybox variables were the most important, but there isn't information on what those are. 
+
+# Plan for next steps
+I don't know how to build a model for this specific question with varying time windows, my first step is understaning how a model like that would work. Features I'm planning on looking into is total sales for the time period compared to inventory, available and returns. I also think that ad spending will influence that number as well. I would also want to investigate on what some of the variables that aren't in the documentation mean. 
