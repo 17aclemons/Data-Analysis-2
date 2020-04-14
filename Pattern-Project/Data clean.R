@@ -1,0 +1,114 @@
+library(tidyverse)
+library(lubridate)
+library(zoo)
+df <- readr::read_csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/Pattern-Project/training_data_20200403.csv")
+
+names(df)
+df$avg_retail_price <- df$sales / df$units
+df[is.nan(df$avg_retail_price),"avg_retail_price"] <- NA
+df$multiple_vendors <- (df$vendor_id_max == df$vendor_id_min)
+df$asin <- as.factor(df$asin)
+df$ordering_region <- as.factor(df$ordering_region)
+df$basket_size <- df$units / df$order_items_total
+df[is.nan(df$basket_size),"basket_size"] <- 0
+
+
+temp <- df %>%
+  filter(available == 0) %>%
+  group_by(floor_date(date, unit = "month")) %>%
+  summarise(ad_spend_on_zero = sum(ad_spend))
+temp %>% slice(tail(row_number(), 5)) %>%
+  summarise(mean_spend = mean(ad_spend_on_zero))
+# a mininmum of 51,344 spent on advertising on the same day that inventory is selling out to zero
+rm(temp)
+
+df1 <- df %>% 
+  select(-X1, -vendor_id_min, -units_pending, -units_returned, -units_sns, -sales,
+         -sales_returned, -sales_sns, -sales_pending, -discount_sns, -discount_coupons, -min_wholesale_price,
+         -inventory, -inbound, -warehouse_id_min, -warehouse_id_max, -ad_sales,
+         -sku_sales, -buybox_approximate_units_suppressed,
+         -order_flag, -conversions, -clicks, -impressions)
+names(df1)
+
+# Work on subsample and we don't know demand if available == 0
+set.seed(54321)
+df1 <- df1[df1$asin %in% sample(unique(df1$asin), 500),]
+df1[df1$available <= 0,"units"] <- NA
+rm(df)
+
+
+# Bad days where sales was essentially 0 across most products
+bad_days <- df1 %>%
+  group_by(time = floor_date(date, unit="day")) %>%
+  summarise(units = sum(units, na.rm = TRUE)) %>%
+  filter(time > ymd("2019-01-21")) #%>%
+#  filter(units < 600) and also remove the day after
+
+ggplot(bad_days, aes(x = time, y = units)) + geom_line()
+bad_days <- ymd(c("2019-10-25","2019-10-26","2019-10-27","2019-10-28",
+                  "2020-03-06","2020-03-07","2020-03-08","2020-03-09",
+                  "2020-03-10","2020-03-11","2020-03-12","2020-03-13",
+                  "2020-03-14"))
+
+dfclean <- df1 %>%
+  filter(!(date %in% bad_days)) %>%
+  arrange(asin, ordering_region) %>%
+  group_by(asin, ordering_region) %>%
+  mutate(avg_retail_price = na.locf(avg_retail_price, na.rm = FALSE),
+         avg_retail_price = na.locf(avg_retail_price, na.rm = FALSE, fromLast = TRUE),
+         pct_suppressed_28_day = rollapply(lag(buybox_supressed_percentage), 28, by.column = T, 
+                                           FUN = function(x) mean(x, na.rm=TRUE), 
+                                           align = 'right', fill = NA),
+         suppressed_yesterday = lag(buybox_supressed_percentage > 0),
+         avg_buybox_28_day = rollapply(lag(buybox_approximate_units_total), 28, FUN = function(x) mean(x, na.rm = TRUE),
+                                       align = 'right', fill = NA),
+         avg_price_28_day = rollapply(lag(avg_retail_price), 28, FUN = function(x) mean(x, na.rm = TRUE),
+                               align = 'right', fill = NA),
+         avg_basketsize_28_day = rollapply(lag(basket_size), 28, FUN = function(x) mean(x, na.rm = TRUE),
+                                           align = 'right', fill = NA),
+         avg_discount_28_day = rollapply(lag(discount), 28, FUN = function(x) mean(x, na.rm = TRUE),
+                                         align = 'right', fill = NA),
+         week_day = as.factor(wday(date, label = TRUE)),
+         lag_1_units = lag(units, 1),
+         lag_2_units = lag(units, 2),
+         lag_3_units = lag(units, 3),
+         lag_4_units = lag(units, 4),
+         lag_5_units = lag(units, 5),
+         lag_6_units = lag(units, 6),
+         lag_7_units = lag(units, 7),
+         back_in_stock = !(is.na(units)) & (is.na(lag(units)) | is.na(lag(units,n = 2))), # Inventory back in, so artificial demand right when it is back in
+         avg_units_28_day = rollapply(lag(units), 28, FUN = function(x) mean(x, na.rm = TRUE),
+                                      align = 'right', fill = NA)) %>%
+  select(-discount, -order_items_total, -max_wholesale_price, -buybox_approximate_units_total,
+         -buybox_percentage, -buybox_supressed_percentage, -basket_size, -ad_spend,
+         -vendor_id_max, -available)
+names(temp)
+
+#### Clean data ####
+
+dfclean <- dfclean %>%
+  filter(!is.na(units)) # no y variable means there is nothing we can train on these
+temp <- dfclean[complete.cases(dfclean),] #this is for a version of the simple model only allowing non-NA's
+# you could also pair this down for the simple model
+# the complex model should be structured to handle the NAs
+
+#### Complicated (e.g., boosting, rf, xgboost, etc.) model for shorter periods of time ####
+# Jeff & Hongsheng
+
+
+#### Simple ARMA / linear regression with weekday for longer periods of time without available inventory ####
+# Micah & Andrew
+# What is the value of advertising? Go back in and evaluate
+# Let's also create an ARMA and ARIMA model for each asin/ordering_region pair
+# to do this we'll need to consider adding back in some observations.
+# How well is the model performing?
+basic <- lm(units~., data = temp)
+summary(basic)
+basic_broom <- broom::tidy(basic)
+
+#### Fill in missings with Predict ####
+
+
+#### Part 2 of the project!!! ####
+
+
