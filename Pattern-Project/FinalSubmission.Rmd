@@ -1,12 +1,27 @@
+---
+title: "FinalProject"
+author: "Andrew Clemons"
+date: "4/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Solution
+Here is the code for what I finding the amount of wasted ad spending. I first created a 56 day lead that we used to predict what product would run out of stock and then calculated how much money was wasted on advertising. I then calculated the amount of money that was wasted the week prior because that money was probably not used to its fullest if we ran out of product. The last chunk is just the aggregation of what you were asking for. I calculated the lags for the whole week, and hope the implementation was what you were thinking. I also spent time working on jeffs approach even though what he was pulling was different. 
+
+# Code
+
+```{r code, eval=FALSE}
 library(imputeTS)
 library(forecast)
 library(tidyverse)
 library(lubridate)
 library(zoo)
 
-
-df <- readr::read_csv("C:/Users/XPS/Desktop/Software/Data-Analysis-2/Pattern-Project/training_data_20200403.csv")
-df <- readr::read_csv("C:/Users/17acl/OneDrive/Desktop/Software/Data-Analysis-2/Pattern-Project/training_data_20200403.csv")
+df <- readr::read_csv("training_data_20200403.csv")
 names(df)
 df$avg_retail_price <- df$sales / df$units
 df[is.nan(df$avg_retail_price),"avg_retail_price"] <- NA
@@ -76,3 +91,5 @@ table <- table %>%
   
 summary(table)
 
+
+```
